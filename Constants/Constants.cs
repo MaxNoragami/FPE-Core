@@ -1,0 +1,35 @@
+namespace FPE.Constants;
+
+public static class Constants
+{
+    // Alphabets for different data types
+    public static class Alphabets
+    {
+        public const string Digits = "0123456789";
+        public const string LowerAlpha = "abcdefghijklmnopqrstuvwxyz";
+        public const string UpperAlpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        public const string AlphaNumeric = Digits + LowerAlpha + UpperAlpha;
+        public const string Email = AlphaNumeric + ".";
+        public const string Base64 = AlphaNumeric + "+/=";
+        public const string Hex = "0123456789abcdef";
+    }
+
+    // Format patterns
+    public static class Patterns
+    {
+        public const string EmailPattern = @"^(.+)@(.+)$";
+        public const string PhonePattern = @"^\+?(\d{1,3})?[-.\s]?(\d{1,4})[-.\s]?(\d+)$";
+        public const string CCPattern = @"^(\d{4})[-\s]?(\d{4})[-\s]?(\d{4})[-\s]?(\d{4})$";
+    }
+
+    // Tweak constants
+    public static class Tweaks
+    {
+        public static readonly byte[] PhoneTweak = new byte[] { 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD };
+        public static readonly byte[] EmailTweak = new byte[] { 0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x78 };
+        public static readonly byte[] NameTweak = new byte[] { 0x98, 0x76, 0x54, 0x32, 0x10, 0xFE, 0xDC };
+        public static readonly byte[] IdentifierTweak = new byte[] { 0x24, 0x68, 0xAC, 0xE0, 0x13, 0x57, 0x9B };
+        public static readonly byte[] CreditCardTweak = new byte[] { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 };
+        public static readonly byte[] DefaultTweak = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+    }
+}
