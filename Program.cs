@@ -24,14 +24,17 @@ Console.WriteLine($"Constant Tweak: {BitConverter.ToString(Constants.Tweaks.Defa
 Console.WriteLine("\nPhone Number Anonymization:");
 string phoneNumber = "+1 415 5550198";
 var phoneAnonymizer = new PhoneNumberAnonymizer(cipher);
+var phoneDeanonymizer = new PhoneNumberAnonymizer(cipher);
 phoneAnonymizer.SetPreserveCountryCode(true);
 phoneAnonymizer.SetPreserveAreaCode(true);
+phoneDeanonymizer.SetPreserveCountryCode(true);
+phoneDeanonymizer.SetPreserveAreaCode(true);
 string encryptedPhone = phoneAnonymizer.Anonymize(phoneNumber);
 Console.WriteLine($"Original: {phoneNumber}");
 Console.WriteLine($"Anonymized: {encryptedPhone}");
 
 // Try decrypting to verify
-string decryptedPhone = phoneAnonymizer.Deanonymize(encryptedPhone);
+string decryptedPhone = phoneDeanonymizer.Deanonymize(encryptedPhone);
 Console.WriteLine($"Deanonymized: {decryptedPhone}");
 
 // Add the following to Program.cs to test our enhanced anonymizers
@@ -40,11 +43,15 @@ Console.WriteLine($"Deanonymized: {decryptedPhone}");
 Console.WriteLine("\nName Anonymization with Special Characters:");
 string specialName = "Global Dataîâbașse SR.-L";
 var specialNameAnonymizer = new NameAnonymizer(cipher);
+var specialNameDeanonymizer = new NameAnonymizer(cipher);
 specialNameAnonymizer.SetPreserveCapitalization(true);
 specialNameAnonymizer.SetPreserveSpecialChars(false); // Will encrypt special chars
 
+specialNameDeanonymizer.SetPreserveCapitalization(true);
+specialNameDeanonymizer.SetPreserveSpecialChars(false);
+
 string encryptedSpecialName = specialNameAnonymizer.Anonymize(specialName);
-string decryptedSpecialName = specialNameAnonymizer.Deanonymize(encryptedSpecialName);
+string decryptedSpecialName = specialNameDeanonymizer.Deanonymize(encryptedSpecialName);
 
 Console.WriteLine($"Original: {specialName}");
 Console.WriteLine($"Anonymized: {encryptedSpecialName}");
@@ -52,8 +59,9 @@ Console.WriteLine($"Deanonymized: {decryptedSpecialName}");
 
 // Now with preserved special chars
 specialNameAnonymizer.SetPreserveSpecialChars(true);
+specialNameDeanonymizer.SetPreserveSpecialChars(true);
 string encryptedSpecialName2 = specialNameAnonymizer.Anonymize(specialName);
-string decryptedSpecialName2 = specialNameAnonymizer.Deanonymize(encryptedSpecialName2);
+string decryptedSpecialName2 = specialNameDeanonymizer.Deanonymize(encryptedSpecialName2);
 
 Console.WriteLine($"\nWith preserved special chars:");
 Console.WriteLine($"Original: {specialName}");
@@ -64,12 +72,17 @@ Console.WriteLine($"Deanonymized: {decryptedSpecialName2}");
 Console.WriteLine("\nEmail Anonymization with Special Characters:");
 string specialEmail = "john.doe_test@example.com";
 var specialEmailAnonymizer = new EmailAnonymizer(cipher);
+var specialEmailDeanonymizer = new EmailAnonymizer(cipher);
 specialEmailAnonymizer.SetPreserveDomain(true);
 specialEmailAnonymizer.SetPreserveDots(true);
 specialEmailAnonymizer.SetPreserveUnderscores(true);
 
+specialEmailDeanonymizer.SetPreserveDomain(true);
+specialEmailDeanonymizer.SetPreserveDots(true);
+specialEmailDeanonymizer.SetPreserveUnderscores(true);
+
 string encryptedSpecialEmail = specialEmailAnonymizer.Anonymize(specialEmail);
-string decryptedSpecialEmail = specialEmailAnonymizer.Deanonymize(encryptedSpecialEmail);
+string decryptedSpecialEmail = specialEmailDeanonymizer.Deanonymize(encryptedSpecialEmail);
 
 Console.WriteLine($"Original: {specialEmail}");
 Console.WriteLine($"Anonymized (preserving dots and underscores): {encryptedSpecialEmail}");
@@ -79,8 +92,11 @@ Console.WriteLine($"Deanonymized: {decryptedSpecialEmail}");
 specialEmailAnonymizer.SetPreserveDots(false);
 specialEmailAnonymizer.SetPreserveUnderscores(false);
 
+specialEmailDeanonymizer.SetPreserveDots(false);
+specialEmailDeanonymizer.SetPreserveUnderscores(false);
+
 string encryptedSpecialEmail2 = specialEmailAnonymizer.Anonymize(specialEmail);
-string decryptedSpecialEmail2 = specialEmailAnonymizer.Deanonymize(encryptedSpecialEmail2);
+string decryptedSpecialEmail2 = specialEmailDeanonymizer.Deanonymize(encryptedSpecialEmail2);
 
 Console.WriteLine($"\nWithout preserving dots and underscores:");
 Console.WriteLine($"Original: {specialEmail}");
@@ -91,25 +107,34 @@ Console.WriteLine($"Deanonymized: {decryptedSpecialEmail2}");
 Console.WriteLine("\nCredit Card Anonymization:");
 string creditCard = "5170 1705 8968 1828";
 var ccAnonymizer = new CreditCardAnonymizer(cipher);
+var ccDeanonymizer = new CreditCardAnonymizer(cipher);
 ccAnonymizer.SetPreserveFirstFour(true);
 ccAnonymizer.SetPreserveLastFour(false);
+
+ccDeanonymizer.SetPreserveFirstFour(true);
+ccDeanonymizer.SetPreserveLastFour(false);
 string encryptedCC = ccAnonymizer.Anonymize(creditCard);
 Console.WriteLine($"Original: {creditCard}");
 Console.WriteLine($"Anonymized: {encryptedCC}");
-string decryptedCC = ccAnonymizer.Deanonymize(encryptedCC);
+string decryptedCC = ccDeanonymizer.Deanonymize(encryptedCC);
 Console.WriteLine($"Deanonymized: {decryptedCC}");
 
 // Demo enhanced string anonymization
 Console.WriteLine("\nEnhanced String Anonymization:");
 string text = "This example with Romănă chars.";  // Shortened example
 var strAnonymizer = new StringAnonymizer(cipher);
+var strDeanonymizer = new StringAnonymizer(cipher);
 strAnonymizer.SetPreserveCase(true);
 strAnonymizer.SetPreserveSpaces(true);
 strAnonymizer.SetPreservePunctuation(true);
+
+strDeanonymizer.SetPreserveCase(true);
+strDeanonymizer.SetPreserveSpaces(true);
+strDeanonymizer.SetPreservePunctuation(true);
 string encryptedText = strAnonymizer.Anonymize(text);
 Console.WriteLine($"Original: {text}");
 Console.WriteLine($"Anonymized: {encryptedText}");
-string decryptedText = strAnonymizer.Deanonymize(encryptedText);
+string decryptedText = strDeanonymizer.Deanonymize(encryptedText);
 Console.WriteLine($"Deanonymized: {decryptedText}");
 
 // Now test longer text
@@ -118,48 +143,65 @@ string longText = "This is a much longer example of text that would normally exc
 string encryptedLongText = strAnonymizer.Anonymize(longText);
 Console.WriteLine($"Original: {longText}");
 Console.WriteLine($"Anonymized: {encryptedLongText}");
-string decryptedLongText = strAnonymizer.Deanonymize(encryptedLongText);
+string decryptedLongText = strDeanonymizer.Deanonymize(encryptedLongText);
 Console.WriteLine($"Deanonymized: {decryptedLongText}");
 
 // Demo numeric anonymization
 Console.WriteLine("\nNumeric Anonymization:");
 string number = "-12345.6789";
 var numAnonymizer = new NumericAnonymizer(cipher);
+var numDeanonymizer = new NumericAnonymizer(cipher);
 numAnonymizer.SetPreserveSign(true);
 numAnonymizer.SetPreserveDecimalPoint(true);
 numAnonymizer.SetPreserveDecimalPlaces(2);
+
+numDeanonymizer.SetPreserveSign(true);
+numDeanonymizer.SetPreserveDecimalPoint(true);
+numDeanonymizer.SetPreserveDecimalPlaces(2);
 string encryptedNumber = numAnonymizer.Anonymize(number);
 Console.WriteLine($"Original: {number}");
 Console.WriteLine($"Anonymized: {encryptedNumber}");
-string decryptedNumber = numAnonymizer.Deanonymize(encryptedNumber);
+string decryptedNumber = numDeanonymizer.Deanonymize(encryptedNumber);
 Console.WriteLine($"Deanonymized: {decryptedNumber}");
 
 // Demo date anonymization
 Console.WriteLine("\nDate Anonymization:");
 string date = "2024-05-11";
 var dateAnonymizer = new DateAnonymizer(cipher);
+var dateDeanonymizer = new DateAnonymizer(cipher);
 dateAnonymizer.SetPreserveYear(true);
 dateAnonymizer.SetPreserveMonth(false);
 dateAnonymizer.SetPreserveDay(false);
 dateAnonymizer.SetDateFormat("yyyy-MM-dd");
+
+dateDeanonymizer.SetPreserveYear(true);
+dateDeanonymizer.SetPreserveMonth(false);
+dateDeanonymizer.SetPreserveDay(false);
+dateDeanonymizer.SetDateFormat("yyyy-MM-dd");
 string encryptedDate = dateAnonymizer.Anonymize(date);
 Console.WriteLine($"Original: {date}");
 Console.WriteLine($"Anonymized: {encryptedDate}");
-string decryptedDate = dateAnonymizer.Deanonymize(encryptedDate);
+string decryptedDate = dateDeanonymizer.Deanonymize(encryptedDate);
 Console.WriteLine($"Deanonymized: {decryptedDate}");
 
 // Test different date format
 Console.WriteLine("\nDate Format Variations:");
 string dateWithFormat = "11/05/2024";
 var dateFormatAnonymizer = new DateAnonymizer(cipher);
+var dateFormatDenonymizer = new DateAnonymizer(cipher);
 dateFormatAnonymizer.SetPreserveYear(true);
 dateFormatAnonymizer.SetPreserveMonth(false);
 dateFormatAnonymizer.SetPreserveDay(false);
 dateFormatAnonymizer.SetDateFormat("dd/MM/yyyy");
+
+dateFormatDenonymizer.SetPreserveYear(true);
+dateFormatDenonymizer.SetPreserveMonth(false);
+dateFormatDenonymizer.SetPreserveDay(false);
+dateFormatDenonymizer.SetDateFormat("dd/MM/yyyy");
 string encryptedDateFormat = dateFormatAnonymizer.Anonymize(dateWithFormat);
 Console.WriteLine($"Original: {dateWithFormat}");
 Console.WriteLine($"Anonymized: {encryptedDateFormat}");
-string decryptedDateFormat = dateFormatAnonymizer.Deanonymize(encryptedDateFormat);
+string decryptedDateFormat = dateFormatDenonymizer.Deanonymize(encryptedDateFormat);
 Console.WriteLine($"Deanonymized: {decryptedDateFormat}");
 
 // Test with different settings for each anonymizer
@@ -168,24 +210,31 @@ Console.WriteLine("\nVariation Tests:");
 // String with different settings
 Console.WriteLine("\nString without preserving spaces and punctuation:");
 var strVariationAnonymizer = new StringAnonymizer(cipher);
+var strVariationDeanonymizer = new StringAnonymizer(cipher);
 strVariationAnonymizer.SetPreserveCase(true);
 strVariationAnonymizer.SetPreserveSpaces(false);
 strVariationAnonymizer.SetPreservePunctuation(false);
+strVariationDeanonymizer.SetPreserveCase(true);
+strVariationDeanonymizer.SetPreserveSpaces(false);
+strVariationDeanonymizer.SetPreservePunctuation(false);
 string encryptedTextVar = strVariationAnonymizer.Anonymize(text);
 Console.WriteLine($"Original: {text}");
 Console.WriteLine($"Anonymized: {encryptedTextVar}");
-string decryptedTextVar = strVariationAnonymizer.Deanonymize(encryptedTextVar);
+string decryptedTextVar = strVariationDeanonymizer.Deanonymize(encryptedTextVar);
 Console.WriteLine($"Deanonymized: {decryptedTextVar}");
 
 // Numeric with different settings
 Console.WriteLine("\nNumeric without preserving decimals:");
 var numVariationAnonymizer = new NumericAnonymizer(cipher);
+var numVariationDeanonymizer = new NumericAnonymizer(cipher);
 numVariationAnonymizer.SetPreserveSign(true);
 numVariationAnonymizer.SetPreserveDecimalPoint(false);
+numVariationDeanonymizer.SetPreserveSign(true);
+numVariationDeanonymizer.SetPreserveDecimalPoint(false);
 string encryptedNumberVar = numVariationAnonymizer.Anonymize(number);
 Console.WriteLine($"Original: {number}");
 Console.WriteLine($"Anonymized: {encryptedNumberVar}");
-string decryptedNumberVar = numVariationAnonymizer.Deanonymize(encryptedNumberVar);
+string decryptedNumberVar = numVariationDeanonymizer.Deanonymize(encryptedNumberVar);
 Console.WriteLine($"Deanonymized: {decryptedNumberVar}");
 
 Console.WriteLine("\nString Anonymizer with Various Character Sets:");
@@ -202,12 +251,18 @@ string[] testStrings = new string[]
 foreach (var testStr in testStrings)
 {
     var strTester = new StringAnonymizer(cipher);
+    var strTesterDeanonym = new StringAnonymizer(cipher);
+
     strTester.SetPreserveCase(true);
     strTester.SetPreserveSpaces(true);
     strTester.SetPreservePunctuation(true);
+
+    strTesterDeanonym.SetPreserveCase(true);
+    strTesterDeanonym.SetPreserveSpaces(true);
+    strTesterDeanonym.SetPreservePunctuation(true);
     
     string encrypted = strTester.Anonymize(testStr);
-    string decrypted = strTester.Deanonymize(encrypted);
+    string decrypted = strTesterDeanonym.Deanonymize(encrypted);
     
     Console.WriteLine($"Original: {testStr}");
     Console.WriteLine($"Anonymized: {encrypted}");
@@ -229,7 +284,10 @@ string[] addresses = new string[]
     "2084 Swick Hill Street",
 };
 
+
+Console.WriteLine("USING ANOTHER ANONYMIZER TO Deanonymize");
 var addressAnonymizer = new AddressAnonymizer(cipher);
+var addressDenonymizer = new AddressAnonymizer(cipher);
 addressAnonymizer.SetPreservePostalCode(true);
 addressAnonymizer.SetPreserveCountry(true);
 addressAnonymizer.SetPreserveCity(false);
@@ -237,11 +295,18 @@ addressAnonymizer.SetPreserveStreetNumber(false);
 addressAnonymizer.SetPreserveStreetPrefix(true);
 addressAnonymizer.SetPreserveStreetSuffix(true);
 
+addressDenonymizer.SetPreservePostalCode(true);
+addressDenonymizer.SetPreserveCountry(true);
+addressDenonymizer.SetPreserveCity(false);
+addressDenonymizer.SetPreserveStreetNumber(false);
+addressDenonymizer.SetPreserveStreetPrefix(true);
+addressDenonymizer.SetPreserveStreetSuffix(true);
+
 Console.WriteLine("\nDefault settings (preserve postal code, country, prefixes and suffixes):");
 foreach (var address in addresses)
 {
     string anonymized = addressAnonymizer.Anonymize(address);
-    string deanonymized = addressAnonymizer.Deanonymize(anonymized);
+    string deanonymized = addressDenonymizer.Deanonymize(anonymized);
     
     Console.WriteLine($"Original: {address}");
     Console.WriteLine($"Anonymized: {anonymized}");
@@ -254,11 +319,15 @@ addressAnonymizer.SetPreserveStreetNumber(true);
 addressAnonymizer.SetPreserveCity(true);
 addressAnonymizer.SetPreserveCountry(false);
 
+addressDenonymizer.SetPreserveStreetNumber(true);
+addressDenonymizer.SetPreserveCity(true);
+addressDenonymizer.SetPreserveCountry(false);
+
 Console.WriteLine("\nAlternative settings (preserve numbers and city, not country):");
 foreach (var address in addresses)
 {
     string anonymized = addressAnonymizer.Anonymize(address);
-    string deanonymized = addressAnonymizer.Deanonymize(anonymized);
+    string deanonymized = addressDenonymizer.Deanonymize(anonymized);
     
     Console.WriteLine($"Original: {address}");
     Console.WriteLine($"Anonymized: {anonymized}");
@@ -266,49 +335,6 @@ foreach (var address in addresses)
     Console.WriteLine();
 }
 
-Console.WriteLine("\nPreserving Specific Characters Example:");
-string emailLikeText = "contact-us@company.example";
-var charPreservingAnonymizer = new StringAnonymizer(cipher);
-
-// Preserve @ symbol and dots as you would in an email
-charPreservingAnonymizer.SetPreserveCharacters(new char[] { '@', '.', '-' });
-
-string anonymizedD = charPreservingAnonymizer.Anonymize(emailLikeText);
-string deanonymizedD = charPreservingAnonymizer.Deanonymize(anonymizedD);
-
-Console.WriteLine($"Original: {emailLikeText}");
-Console.WriteLine($"Anonymized: {anonymizedD}");
-Console.WriteLine($"Deanonymized: {deanonymizedD}");
-
-Console.WriteLine("\nPreserving Pattern Example:");
-string sensitiveMixedData = "Customer ID: ABC-12345, Balance: $5,000.00";
-var patternAnonymizer = new StringAnonymizer(cipher);
-
-// Only anonymize the ID and amount, preserve the labels and formatting
-// This regex captures the ID and amount as groups to be encrypted
-patternAnonymizer.SetPreservePattern(@"Customer ID: ([\w-]+), Balance: \$([\d,\.]+)");
-
-string patternAnonymized = patternAnonymizer.Anonymize(sensitiveMixedData);
-string patternDeanonymized = patternAnonymizer.Deanonymize(patternAnonymized);
-
-Console.WriteLine($"Original: {sensitiveMixedData}");
-Console.WriteLine($"Anonymized: {patternAnonymized}");
-Console.WriteLine($"Deanonymized: {patternDeanonymized}");
-
-
-Console.WriteLine("\nPreserving Specific Characters Example:");
-string emailLikeText2 = "contact-us@company.example";
-var charPreservingAnonymizer2 = new StringAnonymizer(cipher);
-
-// Preserve @ symbol and dots as you would in an email
-charPreservingAnonymizer2.SetPreserveCharacters(new char[] { '@', '.', '-' });
-
-string anonymizedF = charPreservingAnonymizer2.Anonymize(emailLikeText2);
-string deanonymizedF = charPreservingAnonymizer2.Deanonymize(anonymizedF);
-
-Console.WriteLine($"Original: {emailLikeText2}");
-Console.WriteLine($"Anonymized: {anonymizedF}");
-Console.WriteLine($"Deanonymized: {deanonymizedF}");
 
 
 // Wait for user input

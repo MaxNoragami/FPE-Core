@@ -64,342 +64,316 @@ public abstract class BaseAnonymizer : IAnonymizer
     }
     
     protected virtual string AnonymizeWithPreservedChars(string input)
+{
+    Console.WriteLine($"AnonymizeWithPreservedChars: Input: {input}");
+    Console.WriteLine($"PreservedChars: {string.Join(", ", _preserveChars)}");
+    
+    if (string.IsNullOrEmpty(input))
+        return input;
+        
+    // 1. Create a map of positions to preserved characters
+    Dictionary<int, char> preservedCharMap = new Dictionary<int, char>();
+    
+    // 2. Create a string without the preserved characters
+    StringBuilder plaintext = new StringBuilder();
+    for (int i = 0; i < input.Length; i++)
     {
-        // Store positions of preserved characters
-        var preservePositions = input
-            .Select((c, i) => new { Char = c, Index = i })
-            .Where(x => _preserveChars.Contains(x.Char))
-            .ToDictionary(x => x.Index, x => x.Char);
-            
-        // Remove preserved characters for encryption
-        string stripped = new string(input
-            .Where((c, i) => !preservePositions.ContainsKey(i))
-            .ToArray());
-
-        // If stripped is empty, nothing to encrypt
-        if (string.IsNullOrEmpty(stripped))
-            return input;
-            
-        // Check if string is too short (FF3 requires at least 2 characters)
-        if (stripped.Length < 2)
-            stripped = stripped.PadRight(2, 'A');
-            
-        // Create a custom alphabet that includes all characters in the stripped string
-        string customAlphabet = CreateCustomAlphabet(stripped);
-        
-        // Encrypt the stripped string with the custom alphabet
-        string encrypted;
-        try
+        if (_preserveChars.Contains(input[i]))
         {
-            encrypted = _cipher.WithCustomAlphabet(customAlphabet).Encrypt(stripped);
+            preservedCharMap[i] = input[i];
         }
-        catch (Exception)
+        else
         {
-            // Fallback to base alphabet if custom fails
-            stripped = MakeAlphabetSafe(stripped);
-            encrypted = _cipher.Encrypt(stripped);
+            plaintext.Append(input[i]);
         }
-        
-        // Reinsert preserved characters
-        char[] result = encrypted.ToCharArray();
-        int offset = 0;
-        
-        foreach (var position in preservePositions.OrderBy(p => p.Key))
-        {
-            if (position.Key + offset < result.Length)
-            {
-                result = result.Take(position.Key + offset)
-                    .Concat(new[] { position.Value })
-                    .Concat(result.Skip(position.Key + offset))
-                    .ToArray();
-                offset++;
-            }
-            else
-            {
-                // Handle edge case where preserved char is at end
-                result = result.Concat(new[] { position.Value }).ToArray();
-            }
-        }
-        
-        return new string(result);
     }
-
-    protected virtual string DeanonymizeWithPreservedChars(string input)
+    
+    Console.WriteLine($"Preserved positions: {string.Join(", ", preservedCharMap.Keys)}");
+    Console.WriteLine($"Plaintext (without preserved chars): {plaintext}");
+    
+    // 3. Early return if nothing to encrypt
+    if (plaintext.Length == 0)
+        return input;
+        
+    // Ensure minimum length for FF3
+    if (plaintext.Length < 2)
+        plaintext.Append('X');
+            
+    // Use a very strict alphabet approach - only use letters and numbers
+    StringBuilder filteredText = new StringBuilder();
+    foreach (char c in plaintext.ToString())
     {
-        // Similar to AnonymizeWithPreservedChars but in reverse
-        var preservePositions = input
-            .Select((c, i) => new { Char = c, Index = i })
-            .Where(x => _preserveChars.Contains(x.Char))
-            .ToDictionary(x => x.Index, x => x.Char);
-            
-        string stripped = new string(input
-            .Where((c, i) => !preservePositions.ContainsKey(i))
-            .ToArray());
-            
-        // If stripped is empty, nothing to decrypt
-        if (string.IsNullOrEmpty(stripped))
-            return input;
-            
-        // Check if string is too short
-        if (stripped.Length < 2)
-            return input;
-        
-        // Create a custom alphabet that includes all characters in the stripped string
-        string customAlphabet = CreateCustomAlphabet(stripped);
-        
-        // Decrypt the stripped string with custom alphabet
-        string decrypted;
-        try
+        if ((c >= 'a' && c <= 'z') || 
+            (c >= 'A' && c <= 'Z') || 
+            (c >= '0' && c <= '9'))
         {
-            decrypted = _cipher.WithCustomAlphabet(customAlphabet).Decrypt(stripped);
+            filteredText.Append(c);
         }
-        catch (Exception)
-        {
-            // Fallback
-            decrypted = _cipher.Decrypt(stripped);
-        }
-        
-        char[] result = decrypted.ToCharArray();
-        int offset = 0;
-        
-        foreach (var position in preservePositions.OrderBy(p => p.Key))
-        {
-            if (position.Key - offset >= 0 && position.Key - offset <= result.Length)
-            {
-                result = result.Take(position.Key - offset)
-                    .Concat(new[] { position.Value })
-                    .Concat(result.Skip(position.Key - offset))
-                    .ToArray();
-                offset--;
-            }
-            else
-            {
-                // Handle edge case
-                result = (new[] { position.Value }).Concat(result).ToArray();
-            }
-        }
-        
-        return new string(result);
     }
-
-    // Add these helper methods to the BaseAnonymizer class
-    private string CreateCustomAlphabet(string text)
+    
+    string safeText = filteredText.ToString();
+    
+    // If text is too short or empty after filtering
+    if (string.IsNullOrEmpty(safeText) || safeText.Length < 2)
+        safeText = "XX";
+    
+    Console.WriteLine($"Safe text to encrypt: {safeText}");
+    
+    // IMPORTANT: Use a custom alphabet that matches exactly what we're encrypting
+    string customAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    
+    // Encrypt using custom alphabet for reliability
+    string ciphertext = _cipher.WithCustomAlphabet(customAlphabet).Encrypt(safeText);
+    Console.WriteLine($"Encrypted result: {ciphertext}");
+    
+    // 6. Build the final result with preserved characters
+    StringBuilder result = new StringBuilder(ciphertext);
+    
+    // Process in ascending order to maintain correct positions
+    foreach (var pos in preservedCharMap.Keys.OrderBy(k => k))
     {
-        // Create a custom alphabet containing unique characters from the text
-        // plus standard alphanumeric characters to ensure it's compatible with FF3
-        HashSet<char> uniqueChars = new HashSet<char>(text);
-        
-        // Make sure we have all basic alphanumeric characters
-        foreach (char c in Constants.Constants.Alphabets.AlphaNumeric)
+        // Insert only if position is within bounds
+        if (pos <= result.Length)
         {
-            uniqueChars.Add(c);
+            result.Insert(pos, preservedCharMap[pos]);
+            Console.WriteLine($"Inserted {preservedCharMap[pos]} at position {pos}, result now: {result}");
         }
-        
-        return new string(uniqueChars.ToArray());
+        else
+        {
+            result.Append(preservedCharMap[pos]);
+            Console.WriteLine($"Appended {preservedCharMap[pos]}, result now: {result}");
+        }
     }
+    
+    string finalResult = result.ToString();
+    Console.WriteLine($"Final anonymization result: {finalResult}");
+    
+    return finalResult;
+}
+
+ protected virtual string DeanonymizeWithPreservedChars(string input)
+{
+    Console.WriteLine($"DeanonymizeWithPreservedChars: Input: {input}");
+    Console.WriteLine($"PreservedChars: {string.Join(", ", _preserveChars)}");
+    
+    if (string.IsNullOrEmpty(input))
+        return input;
+        
+    // 1. Create a map of positions to preserved characters
+    Dictionary<int, char> preservedCharMap = new Dictionary<int, char>();
+    
+    // 2. Create a string without the preserved characters
+    StringBuilder ciphertext = new StringBuilder();
+    for (int i = 0; i < input.Length; i++)
+    {
+        if (_preserveChars.Contains(input[i]))
+        {
+            preservedCharMap[i] = input[i];
+        }
+        else
+        {
+            ciphertext.Append(input[i]);
+        }
+    }
+    
+    Console.WriteLine($"Preserved positions: {string.Join(", ", preservedCharMap.Keys)}");
+    Console.WriteLine($"Ciphertext (without preserved chars): {ciphertext}");
+    
+    // 3. Early return if nothing to decrypt
+    if (ciphertext.Length == 0)
+        return input;
+        
+    // Ensure minimum length for FF3
+    if (ciphertext.Length < 2)
+        return input;
+    
+    // Use same strict alphabet as in encryption
+    string customAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    
+    // 5. Decrypt using custom alphabet for reliability
+    string plaintext;
+    try
+    {
+        plaintext = _cipher.WithCustomAlphabet(customAlphabet).Decrypt(ciphertext.ToString());
+        Console.WriteLine($"Decrypted result: {plaintext}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error during decryption: {ex.Message}");
+        plaintext = ciphertext.ToString();
+    }
+    
+    // 6. Build the final result with preserved characters
+    StringBuilder result = new StringBuilder(plaintext);
+    
+    // Process in ascending order to maintain correct positions
+    foreach (var pos in preservedCharMap.Keys.OrderBy(k => k))
+    {
+        // Insert only if position is within bounds
+        if (pos <= result.Length)
+        {
+            result.Insert(pos, preservedCharMap[pos]);
+            Console.WriteLine($"Inserted {preservedCharMap[pos]} at position {pos}, result now: {result}");
+        }
+        else
+        {
+            result.Append(preservedCharMap[pos]);
+            Console.WriteLine($"Appended {preservedCharMap[pos]}, result now: {result}");
+        }
+    }
+    
+    string finalResult = result.ToString();
+    Console.WriteLine($"Final deanonymization result: {finalResult}");
+    
+    return finalResult;
+}
+
 
     protected virtual string AnonymizeWithPattern(string input)
     {
-        // Implement regex-based pattern preservation
         var regex = new Regex(_preservePattern);
         var match = regex.Match(input);
         
         if (match.Success)
         {
+            // Create a copy of the original string to work with
             string result = input;
+            int offset = 0;
             
-            // For each capturing group
+            // Process each capturing group
             for (int i = 1; i < match.Groups.Count; i++)
             {
                 var group = match.Groups[i];
                 if (group.Success)
                 {
-                    // Get the value to encrypt
-                    string valueToEncrypt = group.Value;
-                    
-                    // Skip empty groups
-                    if (string.IsNullOrEmpty(valueToEncrypt))
+                    // Extract the part to encrypt
+                    string partToEncrypt = group.Value;
+                    if (string.IsNullOrEmpty(partToEncrypt))
                         continue;
                     
-                    // Ensure minimum length for FF3
-                    if (valueToEncrypt.Length < 2)
-                        valueToEncrypt = valueToEncrypt.PadRight(2, 'X');
-                    
-                    // Create a custom alphabet for this value
-                    string customAlphabet = CreateCustomAlphabetForValue(valueToEncrypt);
-                    
-                    // Encrypt this group
-                    string encrypted;
-                    try 
+                    // Skip minimum length check if needed
+                    if (partToEncrypt.Length < 2)
                     {
-                        // Try with custom alphabet first
-                        encrypted = _cipher.WithCustomAlphabet(customAlphabet).Encrypt(valueToEncrypt);
-                    }
-                    catch (Exception)
-                    {
-                        // Fallback to safe encryption
-                        string safeValue = MakeAlphabetSafe(valueToEncrypt);
-                        encrypted = _cipher.Encrypt(safeValue);
+                        // Just use a literal character replacement for single characters
+                        char[] safeChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
+                        Random rnd = new Random();
+                        char randomChar = safeChars[rnd.Next(safeChars.Length)];
+                        string encryptedChar = randomChar.ToString();
+                        
+                        // Replace in the result - avoiding local variable declaration
+                        result = result.Substring(0, group.Index + offset) + 
+                                encryptedChar + 
+                                result.Substring(group.Index + offset + group.Length);
+                        
+                        // Update offset
+                        offset += encryptedChar.Length - group.Length;
+                        continue;
                     }
                     
-                    // Replace in the result
-                    result = result.Substring(0, group.Index) + 
-                                encrypted + 
-                                result.Substring(group.Index + group.Length);
+                    // Create a safe version of the text to encrypt
+                    string safeText = new string(partToEncrypt
+                        .Where(c => Constants.Constants.Alphabets.AlphaNumeric.Contains(c))
+                        .ToArray());
+                    
+                    // If after filtering it's too short, use a placeholder
+                    if (string.IsNullOrEmpty(safeText) || safeText.Length < 2)
+                    {
+                        safeText = "XX";
+                    }
+                    
+                    // Encrypt using safe text and standard alphabet
+                    string encryptedPart = _cipher.Encrypt(safeText);
+                    
+                    // Replace in the result - avoiding local variable declaration
+                    result = result.Substring(0, group.Index + offset) + 
+                            encryptedPart + 
+                            result.Substring(group.Index + offset + group.Length);
+                    
+                    // Update offset
+                    offset += encryptedPart.Length - group.Length;
                 }
             }
             
             return result;
         }
         
-        // If no pattern match, try encrypting the whole string
-        try
-        {
-            // Create a custom alphabet for the entire input
-            string customAlphabet = CreateCustomAlphabetForValue(input);
-            return _cipher.WithCustomAlphabet(customAlphabet).Encrypt(input);
-        }
-        catch
-        {
-            // Fallback to safe encryption
-            string safeInput = MakeAlphabetSafe(input);
-            return _cipher.Encrypt(safeInput);
-        }
+        // If no match, encrypt the entire string with safe characters
+        string safePlaintext = new string(input
+            .Where(c => Constants.Constants.Alphabets.AlphaNumeric.Contains(c))
+            .ToArray());
+        
+        if (string.IsNullOrEmpty(safePlaintext) || safePlaintext.Length < 2)
+            safePlaintext = "XX";
+            
+        return _cipher.Encrypt(safePlaintext);
     }
 
     protected virtual string DeanonymizeWithPattern(string input)
     {
-        // Similar to AnonymizeWithPattern but using decrypt
         var regex = new Regex(_preservePattern);
         var match = regex.Match(input);
         
         if (match.Success)
         {
+            // Create a copy of the original string to work with
             string result = input;
+            int offset = 0;
             
+            // Process each capturing group
             for (int i = 1; i < match.Groups.Count; i++)
             {
                 var group = match.Groups[i];
                 if (group.Success)
                 {
-                    // Get the value to decrypt
-                    string valueToDecrypt = group.Value;
-                    
-                    // Skip empty groups
-                    if (string.IsNullOrEmpty(valueToDecrypt))
+                    // Extract the part to decrypt
+                    string partToDecrypt = group.Value;
+                    if (string.IsNullOrEmpty(partToDecrypt))
                         continue;
                     
-                    // Create a custom alphabet for this value
-                    string customAlphabet = CreateCustomAlphabetForValue(valueToDecrypt);
+                    // Skip single character
+                    if (partToDecrypt.Length < 2)
+                    {
+                        // We can't properly decrypt a single character with FF3
+                        // Just leave it as is
+                        continue;
+                    }
                     
-                    // Decrypt this group
-                    string decrypted;
+                    // Try to decrypt, with fallback
+                    string decryptedPart;
                     try 
                     {
-                        // Try with custom alphabet first
-                        decrypted = _cipher.WithCustomAlphabet(customAlphabet).Decrypt(valueToDecrypt);
+                        decryptedPart = _cipher.Decrypt(partToDecrypt);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        // Fallback to default decryption
-                        try
-                        {
-                            decrypted = _cipher.Decrypt(valueToDecrypt);
-                        }
-                        catch
-                        {
-                            // If all else fails, return as is
-                            decrypted = valueToDecrypt;
-                        }
+                        Console.WriteLine($"Error decrypting with pattern: {ex.Message}");
+                        // If decryption fails, return the encrypted part unchanged
+                        decryptedPart = partToDecrypt;
+                        continue;
                     }
                     
-                    // Replace in the result
-                    result = result.Substring(0, group.Index) + 
-                                decrypted + 
-                                result.Substring(group.Index + group.Length);
+                    // Replace in the result - avoiding local variable declaration
+                    result = result.Substring(0, group.Index + offset) + 
+                            decryptedPart + 
+                            result.Substring(group.Index + offset + group.Length);
+                    
+                    // Update offset
+                    offset += decryptedPart.Length - group.Length;
                 }
             }
             
             return result;
         }
         
-        // If no pattern match, try decrypting the whole string
+        // If no pattern match, decrypt the entire string
         try
         {
-            // Create a custom alphabet for the entire input
-            string customAlphabet = CreateCustomAlphabetForValue(input);
-            return _cipher.WithCustomAlphabet(customAlphabet).Decrypt(input);
+            return _cipher.Decrypt(input);
         }
         catch
         {
-            // Fallback to default decryption
-            try
-            {
-                return _cipher.Decrypt(input);
-            }
-            catch
-            {
-                // If all else fails, return as is
-                return input;
-            }
+            // On failure, return as-is
+            return input;
         }
-    }
-
-    // Helper method specifically for creating pattern-appropriate alphabets
-    private string CreateCustomAlphabetForValue(string value)
-    {
-        // Include all characters in the value plus standard alphanumeric characters
-        HashSet<char> chars = new HashSet<char>();
-        
-        // Add all characters from the value
-        foreach (char c in value)
-        {
-            chars.Add(c);
-        }
-        
-        // Add standard alphanumeric characters to ensure it works properly
-        foreach (char c in Constants.Constants.Alphabets.AlphaNumeric)
-        {
-            chars.Add(c);
-        }
-        
-        // Add some common special characters that might appear in patterns
-        string specialChars = "-.,;:_+=!@#$%^&*()[]{}|<>/\\\"'";
-        foreach (char c in specialChars)
-        {
-            chars.Add(c);
-        }
-        
-        // Convert to string and return
-        return new string(chars.ToArray());
-    }
-
-    // Method to make strings safe for the default alphabet
-    private string MakeAlphabetSafe(string input)
-    {
-        // Filter out or replace characters not in the default alphabet
-        string safeAlphabet = Constants.Constants.Alphabets.AlphaNumeric;
-        StringBuilder result = new StringBuilder();
-        
-        foreach (char c in input)
-        {
-            if (safeAlphabet.Contains(c))
-            {
-                result.Append(c);
-            }
-            else
-            {
-                // Replace with a safe character
-                result.Append('X');
-            }
-        }
-        
-        // Ensure minimum length
-        if (result.Length < 2)
-        {
-            result.Append("XX");
-        }
-        
-        return result.ToString();
     }
 }
