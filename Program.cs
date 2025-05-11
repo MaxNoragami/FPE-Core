@@ -271,9 +271,7 @@ foreach (var testStr in testStrings)
     Console.WriteLine();
 }
 
-// Add these lines to Program.cs after the last test
-
-// Demo address anonymization
+/// Demo address anonymization
 Console.WriteLine("\nAddress Anonymization:");
 string[] addresses = new string[] 
 {
@@ -284,29 +282,24 @@ string[] addresses = new string[]
     "2084 Swick Hill Street",
 };
 
+Console.WriteLine("Using StringAnonymizer for addresses:");
+var addressStrAnonymizer = new StringAnonymizer(cipher);
+var addressStrDeanonymizer = new StringAnonymizer(cipher);
 
-Console.WriteLine("USING ANOTHER ANONYMIZER TO Deanonymize");
-var addressAnonymizer = new AddressAnonymizer(cipher);
-var addressDenonymizer = new AddressAnonymizer(cipher);
-addressAnonymizer.SetPreservePostalCode(true);
-addressAnonymizer.SetPreserveCountry(true);
-addressAnonymizer.SetPreserveCity(false);
-addressAnonymizer.SetPreserveStreetNumber(false);
-addressAnonymizer.SetPreserveStreetPrefix(true);
-addressAnonymizer.SetPreserveStreetSuffix(true);
+// Configure StringAnonymizer for addresses
+addressStrAnonymizer.SetPreserveCase(true);
+addressStrAnonymizer.SetPreserveSpaces(true);
+addressStrAnonymizer.SetPreservePunctuation(true);
 
-addressDenonymizer.SetPreservePostalCode(true);
-addressDenonymizer.SetPreserveCountry(true);
-addressDenonymizer.SetPreserveCity(false);
-addressDenonymizer.SetPreserveStreetNumber(false);
-addressDenonymizer.SetPreserveStreetPrefix(true);
-addressDenonymizer.SetPreserveStreetSuffix(true);
+addressStrDeanonymizer.SetPreserveCase(true);
+addressStrDeanonymizer.SetPreserveSpaces(true);
+addressStrDeanonymizer.SetPreservePunctuation(true);
 
-Console.WriteLine("\nDefault settings (preserve postal code, country, prefixes and suffixes):");
+Console.WriteLine("\nDefault settings (preserve case, spaces, and punctuation):");
 foreach (var address in addresses)
 {
-    string anonymized = addressAnonymizer.Anonymize(address);
-    string deanonymized = addressDenonymizer.Deanonymize(anonymized);
+    string anonymized = addressStrAnonymizer.Anonymize(address);
+    string deanonymized = addressStrDeanonymizer.Deanonymize(anonymized);
     
     Console.WriteLine($"Original: {address}");
     Console.WriteLine($"Anonymized: {anonymized}");
@@ -314,27 +307,30 @@ foreach (var address in addresses)
     Console.WriteLine();
 }
 
-// Test with different preservation settings
-addressAnonymizer.SetPreserveStreetNumber(true);
-addressAnonymizer.SetPreserveCity(true);
-addressAnonymizer.SetPreserveCountry(false);
+// If you want to preserve some specific characters like postal code formats
+var addressStrAnonymizer2 = new StringAnonymizer(cipher);
+var addressStrDeanonymizer2 = new StringAnonymizer(cipher);
 
-addressDenonymizer.SetPreserveStreetNumber(true);
-addressDenonymizer.SetPreserveCity(true);
-addressDenonymizer.SetPreserveCountry(false);
+// Configure to preserve digits as well
+addressStrAnonymizer2.SetPreserveCase(true);
+addressStrAnonymizer2.SetPreserveSpaces(true);
+addressStrAnonymizer2.SetPreservePunctuation(true);
 
-Console.WriteLine("\nAlternative settings (preserve numbers and city, not country):");
+addressStrDeanonymizer2.SetPreserveCase(true);
+addressStrDeanonymizer2.SetPreserveSpaces(true);
+addressStrDeanonymizer2.SetPreservePunctuation(true);
+
+Console.WriteLine("\nAlternative settings (also preserving digits and hyphens):");
 foreach (var address in addresses)
 {
-    string anonymized = addressAnonymizer.Anonymize(address);
-    string deanonymized = addressDenonymizer.Deanonymize(anonymized);
+    string anonymized = addressStrAnonymizer2.Anonymize(address);
+    string deanonymized = addressStrDeanonymizer2.Deanonymize(anonymized);
     
     Console.WriteLine($"Original: {address}");
     Console.WriteLine($"Anonymized: {anonymized}");
     Console.WriteLine($"Deanonymized: {deanonymized}");
     Console.WriteLine();
 }
-
 
 
 // Wait for user input
