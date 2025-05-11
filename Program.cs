@@ -1,4 +1,5 @@
 ﻿using FPE.Anonymizers;
+using FPE.Constants;
 using FPE.KeyManagement;
 using FPE.Services;
 
@@ -10,10 +11,14 @@ var keyGen = new KeyGenerator();
 var keyTweakPair = keyGen.GenerateKeyTweakPair("demo");
 
 Console.WriteLine($"Generated Key: {keyTweakPair.Key}");
-Console.WriteLine($"Generated Tweak: {BitConverter.ToString(keyTweakPair.Tweak).Replace("-", "")}");
+
 
 // Create a cipher
 var cipher = new FF3Cipher(keyTweakPair.Key, keyTweakPair.Tweak);
+//var cipher = new FF3Cipher(keyTweakPair.Key, Constants.Tweaks.DefaultTweak);
+
+Console.WriteLine($"Generated Tweak: {BitConverter.ToString(keyTweakPair.Tweak).Replace("-", "")}");
+Console.WriteLine($"Constant Tweak: {BitConverter.ToString(Constants.Tweaks.DefaultTweak).Replace("-", "")}");
 
 // Demo phone number anonymization
 Console.WriteLine("\nPhone Number Anonymization:");
