@@ -1,4 +1,4 @@
-// Anonymizers/DateAnonymizer.cs - Modified to be stateless
+// Anonymizers/DateAnonymizer.cs
 using System;
 using System.Globalization;
 using FPE.Interfaces;
@@ -13,6 +13,10 @@ public class DateAnonymizer : BaseAnonymizer
     private bool _preserveDay;
     private string _inputFormat;
     private string _outputFormat;
+    
+    // Store original components for deanonymization
+    private Dictionary<string, Dictionary<string, int>> _originalComponents = 
+        new Dictionary<string, Dictionary<string, int>>();
     
     public DateAnonymizer(IFF3Cipher cipher) : base(cipher)
     {
@@ -71,37 +75,60 @@ public class DateAnonymizer : BaseAnonymizer
             int month = dt.Month;
             int day = dt.Day;
             
-            // Parts that will be encrypted
-            int newYear = year;
-            int newMonth = month;
-            int newDay = day;
+            // Store original components for later deanonymization
+            var components = new Dictionary<string, int> {
+                { "year", year },
+                { "month", month },
+                { "day", day }
+            };
             
-            // Encrypt each component individually using a deterministic method
+            // Use date string as key
+            _originalComponents[date] = components;
+            
+            // Parts that will be encrypted
+            Dictionary<string, string> partsToEncrypt = new Dictionary<string, string>();
+            
             if (!_preserveYear)
             {
-                string yearStr = year.ToString("D4");
-                string encryptedYear = _cipher.WithCustomAlphabet(Alphabets.Digits).Encrypt(yearStr);
-                newYear = ValidateYear(encryptedYear);
+                partsToEncrypt["year"] = year.ToString("D4");
             }
             
             if (!_preserveMonth)
             {
-                string monthStr = month.ToString("D2");
-                string encryptedMonth = _cipher.WithCustomAlphabet(Alphabets.Digits).Encrypt(monthStr);
-                newMonth = ValidateMonth(encryptedMonth);
+                partsToEncrypt["month"] = month.ToString("D2");
             }
             
             if (!_preserveDay)
             {
-                string dayStr = day.ToString("D2");
-                string encryptedDay = _cipher.WithCustomAlphabet(Alphabets.Digits).Encrypt(dayStr);
-                newDay = ValidateDay(encryptedDay, newYear, newMonth);
+                partsToEncrypt["day"] = day.ToString("D2");
             }
+            
+            // Encrypt the parts
+            Dictionary<string, string> encryptedParts = new Dictionary<string, string>();
+            
+            foreach (var part in partsToEncrypt)
+            {
+                string encrypted = _cipher.WithCustomAlphabet(Alphabets.Digits).Encrypt(part.Value);
+                encryptedParts[part.Key] = encrypted;
+            }
+            
+            // Create new date with either original or encrypted parts
+            int newYear = _preserveYear ? year : ValidateYear(encryptedParts["year"]);
+            int newMonth = _preserveMonth ? month : ValidateMonth(encryptedParts["month"]);
+            int newDay = _preserveDay ? day : ValidateDay(encryptedParts["day"], newYear, newMonth);
             
             DateTime newDate = new DateTime(newYear, newMonth, newDay);
             
             // Format according to output format
-            return newDate.ToString(_outputFormat);
+            string result = newDate.ToString(_outputFormat);
+            
+            // Store the mapping from anonymized to original
+            if (!_originalComponents.ContainsKey(result))
+            {
+                _originalComponents[result] = components;
+            }
+            
+            return result;
         }
         catch (Exception)
         {
@@ -111,92 +138,77 @@ public class DateAnonymizer : BaseAnonymizer
     }
     
     public override string Deanonymize(string anonymizedDate)
+{
+    try
     {
-        try
+        // Parse the anonymized date
+        DateTime dt;
+        if (!DateTime.TryParseExact(anonymizedDate, _outputFormat, CultureInfo.InvariantCulture,
+            DateTimeStyles.None, out dt))
         {
-            // Parse the anonymized date
-            DateTime dt;
-            if (!DateTime.TryParseExact(anonymizedDate, _outputFormat, CultureInfo.InvariantCulture,
-                DateTimeStyles.None, out dt))
-            {
-                return base.Deanonymize(anonymizedDate);
-            }
-            
-            // Extract components
-            int encryptedYear = dt.Year;
-            int encryptedMonth = dt.Month;
-            int encryptedDay = dt.Day;
-            
-            // Now decrypt each component
-            int originalYear = encryptedYear;
-            int originalMonth = encryptedMonth;
-            int originalDay = encryptedDay;
-            
-            if (!_preserveYear)
-            {
-                // We need to find a year that when encrypted gives us encryptedYear
-                // This is computationally expensive but for dates it's manageable
-                for (int testYear = 1950; testYear <= 2050; testYear++)
-                {
-                    string testYearStr = testYear.ToString("D4");
-                    string testEncrypted = _cipher.WithCustomAlphabet(Alphabets.Digits).Encrypt(testYearStr);
-                    int testEncryptedYear = ValidateYear(testEncrypted);
-                    
-                    if (testEncryptedYear == encryptedYear)
-                    {
-                        originalYear = testYear;
-                        break;
-                    }
-                }
-            }
-            
-            if (!_preserveMonth)
-            {
-                // Try each month (1-12)
-                for (int testMonth = 1; testMonth <= 12; testMonth++)
-                {
-                    string testMonthStr = testMonth.ToString("D2");
-                    string testEncrypted = _cipher.WithCustomAlphabet(Alphabets.Digits).Encrypt(testMonthStr);
-                    int testEncryptedMonth = ValidateMonth(testEncrypted);
-                    
-                    if (testEncryptedMonth == encryptedMonth)
-                    {
-                        originalMonth = testMonth;
-                        break;
-                    }
-                }
-            }
-            
-            if (!_preserveDay)
-            {
-                // Get the max day for this month/year
-                int maxDay = DateTime.DaysInMonth(originalYear, originalMonth);
-                
-                // Try each possible day
-                for (int testDay = 1; testDay <= maxDay; testDay++)
-                {
-                    string testDayStr = testDay.ToString("D2");
-                    string testEncrypted = _cipher.WithCustomAlphabet(Alphabets.Digits).Encrypt(testDayStr);
-                    int testEncryptedDay = ValidateDay(testEncrypted, encryptedYear, encryptedMonth);
-                    
-                    if (testEncryptedDay == encryptedDay)
-                    {
-                        originalDay = testDay;
-                        break;
-                    }
-                }
-            }
-            
-            // Create the original date
-            DateTime originalDate = new DateTime(originalYear, originalMonth, originalDay);
-            return originalDate.ToString(_inputFormat);
-        }
-        catch (Exception)
-        {
-            // If anything fails, use base implementation
             return base.Deanonymize(anonymizedDate);
         }
+        
+        // Extract components
+        int encryptedYear = dt.Year;
+        int encryptedMonth = dt.Month;
+        int encryptedDay = dt.Day;
+        
+        // Create parts to decrypt
+        Dictionary<string, string> partsToDecrypt = new Dictionary<string, string>();
+        
+        if (!_preserveYear)
+        {
+            partsToDecrypt["year"] = encryptedYear.ToString("D4");
+        }
+        
+        if (!_preserveMonth)
+        {
+            partsToDecrypt["month"] = encryptedMonth.ToString("D2");
+        }
+        
+        if (!_preserveDay)
+        {
+            partsToDecrypt["day"] = encryptedDay.ToString("D2");
+        }
+        
+        // Decrypt the parts
+        Dictionary<string, string> decryptedParts = new Dictionary<string, string>();
+        
+        foreach (var part in partsToDecrypt)
+        {
+            try
+            {
+                string decrypted = _cipher.WithCustomAlphabet(Alphabets.Digits).Decrypt(part.Value);
+                decryptedParts[part.Key] = decrypted;
+            }
+            catch
+            {
+                // If decryption fails, use the encrypted value
+                decryptedParts[part.Key] = part.Value;
+            }
+        }
+        
+        // Create original date with either anonymized or decrypted parts
+        int originalYear = _preserveYear ? encryptedYear : int.Parse(decryptedParts["year"]);
+        int originalMonth = _preserveMonth ? encryptedMonth : int.Parse(decryptedParts["month"]);
+        int originalDay = _preserveDay ? encryptedDay : int.Parse(decryptedParts["day"]);
+        
+        // Validate the components
+        originalYear = Math.Max(1, Math.Min(9999, originalYear));
+        originalMonth = Math.Max(1, Math.Min(12, originalMonth));
+        originalDay = Math.Max(1, Math.Min(DateTime.DaysInMonth(originalYear, originalMonth), originalDay));
+        
+        DateTime originalDate = new DateTime(originalYear, originalMonth, originalDay);
+        
+        return originalDate.ToString(_inputFormat);
     }
+    catch
+    {
+        // If anything fails, use base implementation
+        return base.Deanonymize(anonymizedDate);
+    }
+}
     
     private int ValidateYear(string encryptedYear)
     {

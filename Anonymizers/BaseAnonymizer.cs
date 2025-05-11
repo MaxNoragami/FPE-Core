@@ -65,8 +65,8 @@ public abstract class BaseAnonymizer : IAnonymizer
     
     protected virtual string AnonymizeWithPreservedChars(string input)
 {
-    Console.WriteLine($"AnonymizeWithPreservedChars: Input: {input}");
-    Console.WriteLine($"PreservedChars: {string.Join(", ", _preserveChars)}");
+    //Console.WriteLine($"AnonymizeWithPreservedChars: Input: {input}");
+    //Console.WriteLine($"PreservedChars: {string.Join(", ", _preserveChars)}");
     
     if (string.IsNullOrEmpty(input))
         return input;
@@ -88,8 +88,8 @@ public abstract class BaseAnonymizer : IAnonymizer
         }
     }
     
-    Console.WriteLine($"Preserved positions: {string.Join(", ", preservedCharMap.Keys)}");
-    Console.WriteLine($"Plaintext (without preserved chars): {plaintext}");
+    //Console.WriteLine($"Preserved positions: {string.Join(", ", preservedCharMap.Keys)}");
+    //Console.WriteLine($"Plaintext (without preserved chars): {plaintext}");
     
     // 3. Early return if nothing to encrypt
     if (plaintext.Length == 0)
@@ -117,14 +117,14 @@ public abstract class BaseAnonymizer : IAnonymizer
     if (string.IsNullOrEmpty(safeText) || safeText.Length < 2)
         safeText = "XX";
     
-    Console.WriteLine($"Safe text to encrypt: {safeText}");
+    //Console.WriteLine($"Safe text to encrypt: {safeText}");
     
     // IMPORTANT: Use a custom alphabet that matches exactly what we're encrypting
     string customAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     
     // Encrypt using custom alphabet for reliability
     string ciphertext = _cipher.WithCustomAlphabet(customAlphabet).Encrypt(safeText);
-    Console.WriteLine($"Encrypted result: {ciphertext}");
+    //Console.WriteLine($"Encrypted result: {ciphertext}");
     
     // 6. Build the final result with preserved characters
     StringBuilder result = new StringBuilder(ciphertext);
@@ -136,25 +136,25 @@ public abstract class BaseAnonymizer : IAnonymizer
         if (pos <= result.Length)
         {
             result.Insert(pos, preservedCharMap[pos]);
-            Console.WriteLine($"Inserted {preservedCharMap[pos]} at position {pos}, result now: {result}");
+            //Console.WriteLine($"Inserted {preservedCharMap[pos]} at position {pos}, result now: {result}");
         }
         else
         {
             result.Append(preservedCharMap[pos]);
-            Console.WriteLine($"Appended {preservedCharMap[pos]}, result now: {result}");
+            //Console.WriteLine($"Appended {preservedCharMap[pos]}, result now: {result}");
         }
     }
     
     string finalResult = result.ToString();
-    Console.WriteLine($"Final anonymization result: {finalResult}");
+    //Console.WriteLine($"Final anonymization result: {finalResult}");
     
     return finalResult;
 }
 
  protected virtual string DeanonymizeWithPreservedChars(string input)
 {
-    Console.WriteLine($"DeanonymizeWithPreservedChars: Input: {input}");
-    Console.WriteLine($"PreservedChars: {string.Join(", ", _preserveChars)}");
+    //Console.WriteLine($"DeanonymizeWithPreservedChars: Input: {input}");
+    //Console.WriteLine($"PreservedChars: {string.Join(", ", _preserveChars)}");
     
     if (string.IsNullOrEmpty(input))
         return input;
@@ -176,8 +176,8 @@ public abstract class BaseAnonymizer : IAnonymizer
         }
     }
     
-    Console.WriteLine($"Preserved positions: {string.Join(", ", preservedCharMap.Keys)}");
-    Console.WriteLine($"Ciphertext (without preserved chars): {ciphertext}");
+    //Console.WriteLine($"Preserved positions: {string.Join(", ", preservedCharMap.Keys)}");
+    //Console.WriteLine($"Ciphertext (without preserved chars): {ciphertext}");
     
     // 3. Early return if nothing to decrypt
     if (ciphertext.Length == 0)
@@ -195,7 +195,7 @@ public abstract class BaseAnonymizer : IAnonymizer
     try
     {
         plaintext = _cipher.WithCustomAlphabet(customAlphabet).Decrypt(ciphertext.ToString());
-        Console.WriteLine($"Decrypted result: {plaintext}");
+        //Console.WriteLine($"Decrypted result: {plaintext}");
     }
     catch (Exception ex)
     {
@@ -213,17 +213,17 @@ public abstract class BaseAnonymizer : IAnonymizer
         if (pos <= result.Length)
         {
             result.Insert(pos, preservedCharMap[pos]);
-            Console.WriteLine($"Inserted {preservedCharMap[pos]} at position {pos}, result now: {result}");
+            //Console.WriteLine($"Inserted {preservedCharMap[pos]} at position {pos}, result now: {result}");
         }
         else
         {
             result.Append(preservedCharMap[pos]);
-            Console.WriteLine($"Appended {preservedCharMap[pos]}, result now: {result}");
+            //Console.WriteLine($"Appended {preservedCharMap[pos]}, result now: {result}");
         }
     }
     
     string finalResult = result.ToString();
-    Console.WriteLine($"Final deanonymization result: {finalResult}");
+    //Console.WriteLine($"Final deanonymization result: {finalResult}");
     
     return finalResult;
 }

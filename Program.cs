@@ -211,12 +211,7 @@ Console.WriteLine("\nVariation Tests:");
 Console.WriteLine("\nString without preserving spaces and punctuation:");
 var strVariationAnonymizer = new StringAnonymizer(cipher);
 var strVariationDeanonymizer = new StringAnonymizer(cipher);
-strVariationAnonymizer.SetPreserveCase(true);
-strVariationAnonymizer.SetPreserveSpaces(false);
-strVariationAnonymizer.SetPreservePunctuation(false);
-strVariationDeanonymizer.SetPreserveCase(true);
-strVariationDeanonymizer.SetPreserveSpaces(false);
-strVariationDeanonymizer.SetPreservePunctuation(false);
+
 string encryptedTextVar = strVariationAnonymizer.Anonymize(text);
 Console.WriteLine($"Original: {text}");
 Console.WriteLine($"Anonymized: {encryptedTextVar}");
@@ -252,14 +247,6 @@ foreach (var testStr in testStrings)
 {
     var strTester = new StringAnonymizer(cipher);
     var strTesterDeanonym = new StringAnonymizer(cipher);
-
-    strTester.SetPreserveCase(true);
-    strTester.SetPreserveSpaces(true);
-    strTester.SetPreservePunctuation(true);
-
-    strTesterDeanonym.SetPreserveCase(true);
-    strTesterDeanonym.SetPreserveSpaces(true);
-    strTesterDeanonym.SetPreservePunctuation(true);
     
     string encrypted = strTester.Anonymize(testStr);
     string decrypted = strTesterDeanonym.Deanonymize(encrypted);
@@ -279,21 +266,13 @@ string[] addresses = new string[]
     "Stefan cel Mare si Sfant Boulevard 8, MD-2001",
     "Strada Trei Scaune nr.29, Bucuresti 2, 021211",
     "65 Ponteland Rd",
-    "2084 Swick Hill Street",
+    "2084 Swick Hill Street2084 Swick Hill Street2084 Swick Hill Street",
 };
 
 Console.WriteLine("Using StringAnonymizer for addresses:");
 var addressStrAnonymizer = new StringAnonymizer(cipher);
 var addressStrDeanonymizer = new StringAnonymizer(cipher);
 
-// Configure StringAnonymizer for addresses
-addressStrAnonymizer.SetPreserveCase(true);
-addressStrAnonymizer.SetPreserveSpaces(true);
-addressStrAnonymizer.SetPreservePunctuation(true);
-
-addressStrDeanonymizer.SetPreserveCase(true);
-addressStrDeanonymizer.SetPreserveSpaces(true);
-addressStrDeanonymizer.SetPreservePunctuation(true);
 
 Console.WriteLine("\nDefault settings (preserve case, spaces, and punctuation):");
 foreach (var address in addresses)
@@ -311,14 +290,6 @@ foreach (var address in addresses)
 var addressStrAnonymizer2 = new StringAnonymizer(cipher);
 var addressStrDeanonymizer2 = new StringAnonymizer(cipher);
 
-// Configure to preserve digits as well
-addressStrAnonymizer2.SetPreserveCase(true);
-addressStrAnonymizer2.SetPreserveSpaces(true);
-addressStrAnonymizer2.SetPreservePunctuation(true);
-
-addressStrDeanonymizer2.SetPreserveCase(true);
-addressStrDeanonymizer2.SetPreserveSpaces(true);
-addressStrDeanonymizer2.SetPreservePunctuation(true);
 
 Console.WriteLine("\nAlternative settings (also preserving digits and hyphens):");
 foreach (var address in addresses)
