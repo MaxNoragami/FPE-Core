@@ -29,27 +29,58 @@ Console.WriteLine($"Anonymized: {encryptedPhone}");
 string decryptedPhone = phoneAnonymizer.Deanonymize(encryptedPhone);
 Console.WriteLine($"Deanonymized: {decryptedPhone}");
 
-// Demo email anonymization
-Console.WriteLine("\nEmail Anonymization:");
-string email = "maxim.alexei@isa.utm.md";
-var emailAnonymizer = new EmailAnonymizer(cipher);
-emailAnonymizer.SetPreserveDomain(true);
-string encryptedEmail = emailAnonymizer.Anonymize(email);
-Console.WriteLine($"Original: {email}");
-Console.WriteLine($"Anonymized: {encryptedEmail}");
-string decryptedEmail = emailAnonymizer.Deanonymize(encryptedEmail);
-Console.WriteLine($"Deanonymized: {decryptedEmail}");
+// Add the following to Program.cs to test our enhanced anonymizers
 
-// Demo name anonymization
-Console.WriteLine("\nName Anonymization:");
-string name = "Global Database SRL";
-var nameAnonymizer = new NameAnonymizer(cipher);
-nameAnonymizer.SetPreserveCapitalization(true);
-string encryptedName = nameAnonymizer.Anonymize(name);
-Console.WriteLine($"Original: {name}");
-Console.WriteLine($"Anonymized: {encryptedName}");
-string decryptedName = nameAnonymizer.Deanonymize(encryptedName);
-Console.WriteLine($"Deanonymized: {decryptedName}");
+// Test NameAnonymizer with special characters
+Console.WriteLine("\nName Anonymization with Special Characters:");
+string specialName = "Global Dataîâbașse SR.-L";
+var specialNameAnonymizer = new NameAnonymizer(cipher);
+specialNameAnonymizer.SetPreserveCapitalization(true);
+specialNameAnonymizer.SetPreserveSpecialChars(false); // Will encrypt special chars
+
+string encryptedSpecialName = specialNameAnonymizer.Anonymize(specialName);
+string decryptedSpecialName = specialNameAnonymizer.Deanonymize(encryptedSpecialName);
+
+Console.WriteLine($"Original: {specialName}");
+Console.WriteLine($"Anonymized: {encryptedSpecialName}");
+Console.WriteLine($"Deanonymized: {decryptedSpecialName}");
+
+// Now with preserved special chars
+specialNameAnonymizer.SetPreserveSpecialChars(true);
+string encryptedSpecialName2 = specialNameAnonymizer.Anonymize(specialName);
+string decryptedSpecialName2 = specialNameAnonymizer.Deanonymize(encryptedSpecialName2);
+
+Console.WriteLine($"\nWith preserved special chars:");
+Console.WriteLine($"Original: {specialName}");
+Console.WriteLine($"Anonymized: {encryptedSpecialName2}");
+Console.WriteLine($"Deanonymized: {decryptedSpecialName2}");
+
+// Test EmailAnonymizer with dots and underscores
+Console.WriteLine("\nEmail Anonymization with Special Characters:");
+string specialEmail = "john.doe_test@example.com";
+var specialEmailAnonymizer = new EmailAnonymizer(cipher);
+specialEmailAnonymizer.SetPreserveDomain(true);
+specialEmailAnonymizer.SetPreserveDots(true);
+specialEmailAnonymizer.SetPreserveUnderscores(true);
+
+string encryptedSpecialEmail = specialEmailAnonymizer.Anonymize(specialEmail);
+string decryptedSpecialEmail = specialEmailAnonymizer.Deanonymize(encryptedSpecialEmail);
+
+Console.WriteLine($"Original: {specialEmail}");
+Console.WriteLine($"Anonymized (preserving dots and underscores): {encryptedSpecialEmail}");
+Console.WriteLine($"Deanonymized: {decryptedSpecialEmail}");
+
+// Without preserving special chars
+specialEmailAnonymizer.SetPreserveDots(false);
+specialEmailAnonymizer.SetPreserveUnderscores(false);
+
+string encryptedSpecialEmail2 = specialEmailAnonymizer.Anonymize(specialEmail);
+string decryptedSpecialEmail2 = specialEmailAnonymizer.Deanonymize(encryptedSpecialEmail2);
+
+Console.WriteLine($"\nWithout preserving dots and underscores:");
+Console.WriteLine($"Original: {specialEmail}");
+Console.WriteLine($"Anonymized: {encryptedSpecialEmail2}");
+Console.WriteLine($"Deanonymized: {decryptedSpecialEmail2}");
 
 // Demo credit card anonymization
 Console.WriteLine("\nCredit Card Anonymization:");
@@ -159,6 +190,7 @@ string[] testStrings = new string[]
     "Romanian: ă î â ș ț Ă Î Â Ș Ț",
     "Symbols: €£¥§©®™ !@#$%^&*()",
     "Mixed 12345 with numbers and symbols !@#",
+    "A longer text with multiple words and sentences. This tests how well it works.",
     "A longer text with multiple words and sentences. This tests how well it works."
 };
 
@@ -189,7 +221,7 @@ string[] addresses = new string[]
     "Stefan cel Mare si Sfant Boulevard 8, MD-2001",
     "Strada Trei Scaune nr.29, Bucuresti 2, 021211",
     "65 Ponteland Rd",
-    "2084 Swick Hill Street"
+    "2084 Swick Hill Street",
 };
 
 var addressAnonymizer = new AddressAnonymizer(cipher);

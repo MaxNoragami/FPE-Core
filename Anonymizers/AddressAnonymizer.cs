@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 using FPE.Interfaces;
+using static FPE.Constants.Constants;
 
 namespace FPE.Anonymizers;
 
@@ -19,19 +20,29 @@ public class AddressAnonymizer : BaseAnonymizer
     private Dictionary<string, string> _originalToAnonymized;
     private Dictionary<string, string> _anonymizedToOriginal;
     
-    // Child anonymizers for specialized parts
-    private StringAnonymizer _streetNameAnonymizer;
-    private StringAnonymizer _cityAnonymizer;
-    private StringAnonymizer _countryAnonymizer;
+    // Child anonymizers
+    private StringAnonymizer _textAnonymizer;
+    private NumericAnonymizer _numericAnonymizer;
     
     // Constants for address part detection
-    private static readonly string[] STREET_PREFIXES = { "bd.", "str.", "strada", "avenue", "ave.", "blvd." };
-    private static readonly string[] STREET_SUFFIXES = { "street", "st.", "road", "rd.", "boulevard", "blvd", "lane", "ln." };
-    private static readonly string[] COUNTRIES = { "Moldova", "Romania", "USA", "UK", "Ukraine", "Russia" };
+    private static readonly string[] STREET_PREFIXES = { 
+        "bd.", "blvd.", "str.", "strada", "avenue", "ave.", "boulevard",
+        "st.", "ln.", "lane", "road", "rd.", "drive", "dr.", "place", "pl.",
+        "alley", "court", "ct." 
+    };
     
-    // Regex patterns for common address components
-    private static readonly Regex POSTAL_CODE_PATTERN = new Regex(@"\b([A-Z]{1,2}[-\s]?\d{1,5}|\d{5,6}|MD-\d{4})\b");
-    private static readonly Regex STREET_NUMBER_PATTERN = new Regex(@"\b(\d+[A-Za-z]?)\b|nr\.?(\d+)");
+    private static readonly string[] COUNTRY_NAMES = {
+        "Moldova", "Romania", "USA", "UK", "United States", "United Kingdom",
+        "Ukraine", "Russia", "France", "Germany", "Italy", "Spain"
+    };
+    
+    // Common postal code patterns for different countries
+    private static readonly Regex POSTAL_CODE_PATTERN = new Regex(
+        @"\b([A-Z]{1,2}[-\s]?\d{1,5}|\d{4,6}|MD[-\s]?\d{4})\b");
+    
+    // Street number patterns
+    private static readonly Regex STREET_NUMBER_PATTERN = new Regex(
+        @"\b(\d+[A-Za-z]?)\b|nr\.?(\d+)");
     
     public AddressAnonymizer(IFF3Cipher cipher) : base(cipher)
     {
@@ -45,109 +56,83 @@ public class AddressAnonymizer : BaseAnonymizer
         _originalToAnonymized = new Dictionary<string, string>();
         _anonymizedToOriginal = new Dictionary<string, string>();
         
-        // Initialize child anonymizers
-        _streetNameAnonymizer = new StringAnonymizer(cipher);
-        _streetNameAnonymizer.SetPreserveCase(true);
-        _streetNameAnonymizer.SetPreserveSpaces(true);
-        _streetNameAnonymizer.SetPreservePunctuation(true);
+        // Initialize anonymizers
+        _textAnonymizer = new StringAnonymizer(cipher);
+        _textAnonymizer.SetPreserveCase(true);
+        _textAnonymizer.SetPreserveSpaces(true);
+        _textAnonymizer.SetPreservePunctuation(true);
         
-        _cityAnonymizer = new StringAnonymizer(cipher);
-        _cityAnonymizer.SetPreserveCase(true);
-        
-        _countryAnonymizer = new StringAnonymizer(cipher);
-        _countryAnonymizer.SetPreserveCase(true);
+        _numericAnonymizer = new NumericAnonymizer(cipher);
+        _numericAnonymizer.SetPreserveSign(true);
     }
     
-    public void SetPreservePostalCode(bool preserve)
-    {
-        _preservePostalCode = preserve;
-    }
-    
-    public void SetPreserveCountry(bool preserve)
-    {
-        _preserveCountry = preserve;
-    }
-    
-    public void SetPreserveCity(bool preserve)
-    {
-        _preserveCity = preserve;
-    }
-    
-    public void SetPreserveStreetNumber(bool preserve)
-    {
-        _preserveStreetNumber = preserve;
-    }
-    
-    public void SetPreserveStreetPrefix(bool preserve)
-    {
-        _preserveStreetPrefix = preserve;
-    }
-    
-    public void SetPreserveStreetSuffix(bool preserve)
-    {
-        _preserveStreetSuffix = preserve;
-    }
+    // Configuration methods
+    public void SetPreservePostalCode(bool preserve) => _preservePostalCode = preserve;
+    public void SetPreserveCountry(bool preserve) => _preserveCountry = preserve;
+    public void SetPreserveCity(bool preserve) => _preserveCity = preserve;
+    public void SetPreserveStreetNumber(bool preserve) => _preserveStreetNumber = preserve;
+    public void SetPreserveStreetPrefix(bool preserve) => _preserveStreetPrefix = preserve;
+    public void SetPreserveStreetSuffix(bool preserve) => _preserveStreetSuffix = preserve;
     
     public override string Anonymize(string address)
     {
         if (string.IsNullOrEmpty(address))
             return address;
             
-        // Save original address for mapping
+        // Check for cached result
         if (_originalToAnonymized.TryGetValue(address, out string existingAnonymized))
-        {
             return existingAnonymized;
-        }
             
-        // Track identified components for anonymization/preservation
+        // Parse the address into components
         AddressComponents components = ParseAddress(address);
         
-        // Create a working copy of the input
+        // Build a working copy
         string result = address;
         
-        // Anonymize street name
+        // Process each identified component
+        
+        // 1. Street name
         if (!string.IsNullOrEmpty(components.StreetName))
         {
-            string streetAnonymized = _streetNameAnonymizer.Anonymize(components.StreetName);
-            result = ReplaceComponent(result, components.StreetName, streetAnonymized);
+            string anonymizedStreetName = _textAnonymizer.Anonymize(components.StreetName);
+            result = SafeReplace(result, components.StreetName, anonymizedStreetName);
         }
         
-        // Handle street number
+        // 2. Street number
         if (!string.IsNullOrEmpty(components.StreetNumber) && !_preserveStreetNumber)
         {
-            // Ensure street number meets minimum length for FPE
-            string numberToEncrypt = components.StreetNumber;
-            if (numberToEncrypt.Length < 2)
+            string anonymizedNumber;
+            
+            // Handle minimum length requirement for FF3
+            if (components.StreetNumber.Length < 2)
             {
-                numberToEncrypt = numberToEncrypt.PadRight(2, '0');
+                anonymizedNumber = _numericAnonymizer.Anonymize(components.StreetNumber.PadLeft(2, '0'));
+                if (anonymizedNumber.Length > 1)
+                    anonymizedNumber = anonymizedNumber.Substring(anonymizedNumber.Length - 1);
+            }
+            else
+            {
+                anonymizedNumber = _numericAnonymizer.Anonymize(components.StreetNumber);
             }
             
-            string numberAnonymized = _streetNameAnonymizer.Anonymize(numberToEncrypt);
-            
-            // If original had only one digit, trim result
-            if (components.StreetNumber.Length == 1)
-            {
-                numberAnonymized = numberAnonymized[0].ToString();
-            }
-            
-            result = ReplaceComponent(result, components.StreetNumber, numberAnonymized);
+            result = SafeReplace(result, components.StreetNumber, anonymizedNumber);
         }
         
-        // Handle city
+        // 3. City
         if (!string.IsNullOrEmpty(components.City) && !_preserveCity)
         {
-            string cityAnonymized = _cityAnonymizer.Anonymize(components.City);
-            result = ReplaceComponent(result, components.City, cityAnonymized);
+            string anonymizedCity = _textAnonymizer.Anonymize(components.City);
+            result = SafeReplace(result, components.City, anonymizedCity);
         }
         
-        // Handle country
+        // 4. Country
         if (!string.IsNullOrEmpty(components.Country) && !_preserveCountry)
         {
-            string countryAnonymized = _countryAnonymizer.Anonymize(components.Country);
-            result = ReplaceComponent(result, components.Country, countryAnonymized);
+            string anonymizedCountry = _textAnonymizer.Anonymize(components.Country);
+            result = SafeReplace(result, components.Country, anonymizedCountry);
         }
         
-        // Store mappings for future deanonymization
+        // Store mapping for later deanonymization
         _originalToAnonymized[address] = result;
         _anonymizedToOriginal[result] = address;
         
@@ -156,65 +141,60 @@ public class AddressAnonymizer : BaseAnonymizer
     
     public override string Deanonymize(string anonymizedAddress)
     {
-        // Check if we have an exact mapping first
-        if (_anonymizedToOriginal.TryGetValue(anonymizedAddress, out string original))
-        {
-            return original;
-        }
-        
-        // Otherwise attempt component-based deanonymization
         if (string.IsNullOrEmpty(anonymizedAddress))
             return anonymizedAddress;
+            
+        // Check for cached result
+        if (_anonymizedToOriginal.TryGetValue(anonymizedAddress, out string originalAddress))
+            return originalAddress;
             
         // Parse the anonymized address
         AddressComponents components = ParseAddress(anonymizedAddress);
         
-        // Create a working copy of the input
+        // Build a working copy
         string result = anonymizedAddress;
         
-        // Deanonymize street name if present
+        // Process each identified component
+        
+        // 1. Street name
         if (!string.IsNullOrEmpty(components.StreetName))
         {
-            string streetDeanonymized = _streetNameAnonymizer.Deanonymize(components.StreetName);
-            result = ReplaceComponent(result, components.StreetName, streetDeanonymized);
+            string deanonymizedStreetName = _textAnonymizer.Deanonymize(components.StreetName);
+            result = SafeReplace(result, components.StreetName, deanonymizedStreetName);
         }
         
-        // Handle street number
+        // 2. Street number
         if (!string.IsNullOrEmpty(components.StreetNumber) && !_preserveStreetNumber)
         {
-            // Ensure street number meets minimum length for FPE
-            string numberToDecrypt = components.StreetNumber;
-            bool wasPadded = false;
+            string deanonymizedNumber;
             
-            if (numberToDecrypt.Length < 2)
+            // Handle minimum length requirement for FF3
+            if (components.StreetNumber.Length < 2)
             {
-                numberToDecrypt = numberToDecrypt.PadRight(2, '0');
-                wasPadded = true;
+                deanonymizedNumber = _numericAnonymizer.Deanonymize(components.StreetNumber.PadLeft(2, '0'));
+                if (deanonymizedNumber.Length > 1)
+                    deanonymizedNumber = deanonymizedNumber.Substring(deanonymizedNumber.Length - 1);
+            }
+            else
+            {
+                deanonymizedNumber = _numericAnonymizer.Deanonymize(components.StreetNumber);
             }
             
-            string numberDeanonymized = _streetNameAnonymizer.Deanonymize(numberToDecrypt);
-            
-            // If original had only one digit, trim result
-            if (wasPadded)
-            {
-                numberDeanonymized = numberDeanonymized[0].ToString();
-            }
-            
-            result = ReplaceComponent(result, components.StreetNumber, numberDeanonymized);
+            result = SafeReplace(result, components.StreetNumber, deanonymizedNumber);
         }
         
-        // Handle city
+        // 3. City
         if (!string.IsNullOrEmpty(components.City) && !_preserveCity)
         {
-            string cityDeanonymized = _cityAnonymizer.Deanonymize(components.City);
-            result = ReplaceComponent(result, components.City, cityDeanonymized);
+            string deanonymizedCity = _textAnonymizer.Deanonymize(components.City);
+            result = SafeReplace(result, components.City, deanonymizedCity);
         }
         
-        // Handle country
+        // 4. Country
         if (!string.IsNullOrEmpty(components.Country) && !_preserveCountry)
         {
-            string countryDeanonymized = _countryAnonymizer.Deanonymize(components.Country);
-            result = ReplaceComponent(result, components.Country, countryDeanonymized);
+            string deanonymizedCountry = _textAnonymizer.Deanonymize(components.Country);
+            result = SafeReplace(result, components.Country, deanonymizedCountry);
         }
         
         return result;
@@ -224,23 +204,21 @@ public class AddressAnonymizer : BaseAnonymizer
     {
         var components = new AddressComponents();
         
-        // Detect postal code
+        // 1. Extract postal code with regex
         var postalCodeMatch = POSTAL_CODE_PATTERN.Match(address);
         if (postalCodeMatch.Success)
         {
             components.PostalCode = postalCodeMatch.Value;
         }
         
-        // Detect street number - look for all matches
+        // 2. Extract street numbers
         var streetNumberMatches = STREET_NUMBER_PATTERN.Matches(address);
         if (streetNumberMatches.Count > 0)
         {
-            // Use the first match as the street number
             foreach (Match match in streetNumberMatches)
             {
-                string value = match.Groups[1].Success 
-                    ? match.Groups[1].Value 
-                    : match.Groups[2].Value;
+                string value = match.Groups[1].Success ? match.Groups[1].Value 
+                             : match.Groups[2].Success ? match.Groups[2].Value : null;
                 
                 if (!string.IsNullOrEmpty(value))
                 {
@@ -250,75 +228,102 @@ public class AddressAnonymizer : BaseAnonymizer
             }
         }
         
-        // Detect street prefix and suffix
+        // 3. Look for street prefixes
+        string foundPrefix = null;
+        int prefixPos = -1;
+        
         foreach (var prefix in STREET_PREFIXES)
         {
-            if (ContainsWholeWord(address, prefix))
+            int pos = FindWholeWord(address, prefix);
+            if (pos >= 0 && (prefixPos < 0 || pos < prefixPos))
             {
-                components.StreetPrefix = prefix;
-                break;
+                foundPrefix = prefix;
+                prefixPos = pos;
             }
         }
         
-        foreach (var suffix in STREET_SUFFIXES)
+        if (foundPrefix != null)
         {
-            if (ContainsWholeWord(address, suffix))
-            {
-                components.StreetSuffix = suffix;
-                break;
-            }
+            components.StreetPrefix = foundPrefix;
         }
         
-        // Extract street name using improved logic
-        if (components.StreetPrefix != null || components.StreetSuffix != null)
+        // 4. Look for known countries
+        foreach (var country in COUNTRY_NAMES)
         {
-            components.StreetName = ExtractStreetName(address, components);
-        }
-        
-        // Detect country
-        foreach (var country in COUNTRIES)
-        {
-            if (ContainsWholeWord(address, country))
+            if (FindWholeWord(address, country) >= 0)
             {
                 components.Country = country;
                 break;
             }
         }
         
-        // Detect city - look for common patterns
-        var parts = address.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+        // 5. Extract street name - one of the most challenging parts
+        if (!string.IsNullOrEmpty(components.StreetPrefix))
+        {
+            // If we found a street prefix, find what comes after it
+            int startPos = address.IndexOf(components.StreetPrefix) + components.StreetPrefix.Length;
+            int endPos = address.Length;
+            
+            // Find the first comma, number, or known suffix after the prefix
+            int commaPos = address.IndexOf(',', startPos);
+            if (commaPos > 0) endPos = Math.Min(endPos, commaPos);
+            
+            if (!string.IsNullOrEmpty(components.StreetNumber))
+            {
+                int numPos = address.IndexOf(components.StreetNumber, startPos);
+                if (numPos > 0) endPos = Math.Min(endPos, numPos);
+            }
+            
+            if (startPos < endPos)
+            {
+                components.StreetName = address.Substring(startPos, endPos - startPos).Trim();
+            }
+        }
+        
+        // 6. Try to extract city - typically found between commas
+        var parts = address.Split(new char[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length > 1)
         {
-            // Try to find city part - typically before postal code or country
-            for (int i = 0; i < parts.Length; i++)
+            // Check parts that aren't at beginning or end
+            for (int i = 1; i < parts.Length - 1; i++)
             {
                 string part = parts[i].Trim();
                 
-                // Skip parts that are definitely not the city
-                if (part.Contains(components.PostalCode) || 
-                    (components.Country != null && part.Contains(components.Country)) ||
-                    (components.StreetName != null && part.Contains(components.StreetName)))
-                {
+                // Skip parts containing postal codes or containing very short texts
+                if (components.PostalCode != null && part.Contains(components.PostalCode))
                     continue;
+                
+                if (part.Length < 3) // Too short to be a city name
+                    continue;
+                
+                // Look for city indicators like "mun."
+                if (part.Contains("mun.") || part.StartsWith("mun"))
+                {
+                    part = part.Replace("mun.", "").Replace("mun", "").Trim();
+                    components.City = part;
+                    break;
                 }
                 
-                // Common city indicators
-                if (part.Contains("mun.") || 
-                    part.StartsWith("mun ") || 
-                    (i > 0 && i < parts.Length - 1)) // Middle parts are often cities
+                // Check if the part contains just a word (likely a city name)
+                // without numbers or other special indicators
+                if (!ContainsDigit(part) && !part.Contains("str.") && !part.Contains("bd."))
                 {
-                    // Remove common prefixes
-                    string cityCandidate = part
-                        .Replace("mun.", "")
-                        .Replace("mun", "")
-                        .Trim();
-                    
-                    // Skip if it's too short
-                    if (cityCandidate.Length > 2)
-                    {
-                        components.City = cityCandidate;
-                        break;
-                    }
+                    components.City = part;
+                    break;
+                }
+            }
+            
+            // If still no city found and there are enough parts, 
+            // consider the second-to-last part to be the city
+            if (string.IsNullOrEmpty(components.City) && parts.Length >= 3)
+            {
+                string candidateCity = parts[parts.Length - 2].Trim();
+                
+                // Simple validation - not too short, no postal code
+                if (candidateCity.Length >= 3 && 
+                    (components.PostalCode == null || !candidateCity.Contains(components.PostalCode)))
+                {
+                    components.City = candidateCity;
                 }
             }
         }
@@ -326,125 +331,83 @@ public class AddressAnonymizer : BaseAnonymizer
         return components;
     }
     
-    private string ExtractStreetName(string address, AddressComponents components)
-    {
-        int startIndex = 0;
-        int endIndex = address.Length;
-        
-        // Find start position based on prefix
-        if (components.StreetPrefix != null)
-        {
-            int prefixPos = FindWholeWordPosition(address, components.StreetPrefix);
-            if (prefixPos >= 0)
-            {
-                startIndex = prefixPos + components.StreetPrefix.Length;
-            }
-        }
-        
-        // Find end position
-        if (components.StreetSuffix != null)
-        {
-            int suffixPos = FindWholeWordPosition(address, components.StreetSuffix);
-            if (suffixPos > startIndex)
-            {
-                endIndex = suffixPos;
-            }
-        }
-        else if (components.StreetNumber != null)
-        {
-            // Look for street number after the street name
-            int numPos = address.IndexOf(components.StreetNumber, startIndex);
-            if (numPos > startIndex)
-            {
-                endIndex = numPos;
-            }
-        }
-        else
-        {
-            // Look for comma or other delimiter
-            int commaPos = address.IndexOf(',', startIndex);
-            if (commaPos > startIndex)
-            {
-                endIndex = commaPos;
-            }
-        }
-        
-        if (endIndex > startIndex)
-        {
-            string extracted = address.Substring(startIndex, endIndex - startIndex).Trim();
-            
-            // Clean up any trailing characters
-            extracted = Regex.Replace(extracted, @"[,.]+$", "").Trim();
-            
-            return extracted;
-        }
-        
-        return null;
-    }
+    // Helper methods
     
-    private string ReplaceComponent(string source, string oldValue, string newValue)
+    private string SafeReplace(string source, string oldValue, string newValue)
     {
         if (string.IsNullOrEmpty(oldValue) || !source.Contains(oldValue))
             return source;
             
-        // Find positions where the old value appears as a whole word
+        // Find positions where the old value appears as a word or phrase
         List<int> positions = new List<int>();
         int pos = 0;
         
-        while ((pos = source.IndexOf(oldValue, pos)) != -1)
+        while ((pos = source.IndexOf(oldValue, pos, StringComparison.OrdinalIgnoreCase)) != -1)
         {
-            // Check if whole word
-            bool isWholeWord = true;
+            bool isMatch = true;
+            
+            // Check if it's a whole word (or at least not part of another word)
             if (pos > 0 && char.IsLetterOrDigit(source[pos - 1]))
-                isWholeWord = false;
+                isMatch = false;
                 
             if (pos + oldValue.Length < source.Length && 
                 char.IsLetterOrDigit(source[pos + oldValue.Length]))
-                isWholeWord = false;
+                isMatch = false;
                 
-            if (isWholeWord)
+            if (isMatch)
                 positions.Add(pos);
                 
             pos += oldValue.Length;
         }
         
-        // Replace from end to beginning to maintain positions
-        StringBuilder result = new StringBuilder(source);
-        for (int i = positions.Count - 1; i >= 0; i--)
+        // Replace from end to beginning to avoid position shifts
+        if (positions.Count > 0)
         {
-            result.Remove(positions[i], oldValue.Length);
-            result.Insert(positions[i], newValue);
+            StringBuilder result = new StringBuilder(source);
+            
+            foreach (int position in positions.OrderByDescending(p => p))
+            {
+                result.Remove(position, oldValue.Length);
+                result.Insert(position, newValue);
+            }
+            
+            return result.ToString();
         }
         
-        return result.ToString();
+        return source;
     }
     
-    private bool ContainsWholeWord(string source, string word)
+    private int FindWholeWord(string text, string word)
     {
-        return FindWholeWordPosition(source, word) >= 0;
-    }
-    
-    private int FindWholeWordPosition(string source, string word)
-    {
-        int pos = 0;
-        while ((pos = source.IndexOf(word, pos, StringComparison.OrdinalIgnoreCase)) != -1)
+        int index = 0;
+        while (index < text.Length)
         {
-            // Check if whole word
-            bool isWholeWord = true;
-            if (pos > 0 && char.IsLetterOrDigit(source[pos - 1]))
-                isWholeWord = false;
+            index = text.IndexOf(word, index, StringComparison.OrdinalIgnoreCase);
+            if (index == -1)
+                return -1;
                 
-            if (pos + word.Length < source.Length && 
-                char.IsLetterOrDigit(source[pos + word.Length]))
-                isWholeWord = false;
+            // Check if it's a whole word
+            bool isWordStart = (index == 0 || !char.IsLetterOrDigit(text[index - 1]));
+            bool isWordEnd = (index + word.Length == text.Length || 
+                             !char.IsLetterOrDigit(text[index + word.Length]));
+                             
+            if (isWordStart && isWordEnd)
+                return index;
                 
-            if (isWholeWord)
-                return pos;
-                
-            pos += word.Length;
+            index += word.Length;
         }
         
         return -1;
+    }
+    
+    private bool ContainsDigit(string text)
+    {
+        foreach (char c in text)
+        {
+            if (char.IsDigit(c))
+                return true;
+        }
+        return false;
     }
     
     private class AddressComponents

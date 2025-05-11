@@ -9,7 +9,7 @@ public static class Constants
         public const string LowerAlpha = "abcdefghijklmnopqrstuvwxyz";
         public const string UpperAlpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         public const string AlphaNumeric = Digits + LowerAlpha + UpperAlpha;
-        public const string Email = AlphaNumeric + ".";
+        public const string Email = AlphaNumeric + "._-";
         public const string Base64 = AlphaNumeric + "+/=";
         public const string Hex = "0123456789abcdef";
         
