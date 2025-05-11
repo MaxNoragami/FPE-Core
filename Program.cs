@@ -179,6 +179,56 @@ foreach (var testStr in testStrings)
     Console.WriteLine();
 }
 
+// Add these lines to Program.cs after the last test
+
+// Demo address anonymization
+Console.WriteLine("\nAddress Anonymization:");
+string[] addresses = new string[] 
+{
+    "bd. Ștefan cel Mare și Sfânt, 134, MD-2012, mun. Chișinău, Moldova",
+    "Stefan cel Mare si Sfant Boulevard 8, MD-2001",
+    "Strada Trei Scaune nr.29, Bucuresti 2, 021211",
+    "65 Ponteland Rd",
+    "2084 Swick Hill Street"
+};
+
+var addressAnonymizer = new AddressAnonymizer(cipher);
+addressAnonymizer.SetPreservePostalCode(true);
+addressAnonymizer.SetPreserveCountry(true);
+addressAnonymizer.SetPreserveCity(false);
+addressAnonymizer.SetPreserveStreetNumber(false);
+addressAnonymizer.SetPreserveStreetPrefix(true);
+addressAnonymizer.SetPreserveStreetSuffix(true);
+
+Console.WriteLine("\nDefault settings (preserve postal code, country, prefixes and suffixes):");
+foreach (var address in addresses)
+{
+    string anonymized = addressAnonymizer.Anonymize(address);
+    string deanonymized = addressAnonymizer.Deanonymize(anonymized);
+    
+    Console.WriteLine($"Original: {address}");
+    Console.WriteLine($"Anonymized: {anonymized}");
+    Console.WriteLine($"Deanonymized: {deanonymized}");
+    Console.WriteLine();
+}
+
+// Test with different preservation settings
+addressAnonymizer.SetPreserveStreetNumber(true);
+addressAnonymizer.SetPreserveCity(true);
+addressAnonymizer.SetPreserveCountry(false);
+
+Console.WriteLine("\nAlternative settings (preserve numbers and city, not country):");
+foreach (var address in addresses)
+{
+    string anonymized = addressAnonymizer.Anonymize(address);
+    string deanonymized = addressAnonymizer.Deanonymize(anonymized);
+    
+    Console.WriteLine($"Original: {address}");
+    Console.WriteLine($"Anonymized: {anonymized}");
+    Console.WriteLine($"Deanonymized: {deanonymized}");
+    Console.WriteLine();
+}
+
 // Wait for user input
 Console.WriteLine("\nPress any key to exit...");
 Console.ReadKey();
