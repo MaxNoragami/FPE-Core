@@ -12,14 +12,22 @@ public static class Constants
         public const string Email = AlphaNumeric + ".";
         public const string Base64 = AlphaNumeric + "+/=";
         public const string Hex = "0123456789abcdef";
+        
+        // Extended alphabet with Romanian characters
+        public const string ExtendedLatin = AlphaNumeric + "ăĂîÎâÂșȘțȚüÜöÖäÄéÉèÈêÊëËàÀáÁíÍìÌñÑçÇ";
     }
 
     // Format patterns
     public static class Patterns
     {
+        // Existing patterns
         public const string EmailPattern = @"^(.+)@(.+)$";
         public const string PhonePattern = @"^\+?(\d{1,3})?[-.\s]?(\d{1,4})[-.\s]?(\d+)$";
         public const string CCPattern = @"^(\d{4})[-\s]?(\d{4})[-\s]?(\d{4})[-\s]?(\d{4})$";
+        
+        // New patterns
+        public const string DatePattern = @"^(\d{4})-(\d{2})-(\d{2})$"; // ISO format date
+        public const string DecimalPattern = @"^([+-]?)(\d+)\.?(\d*)([eE][+-]?\d+)?$"; // Decimal number
     }
 
     // Tweak constants

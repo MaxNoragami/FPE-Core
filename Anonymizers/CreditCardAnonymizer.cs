@@ -1,3 +1,4 @@
+// Anonymizers/CreditCardAnonymizer.cs - Updated implementation
 using System.Text.RegularExpressions;
 using FPE.Interfaces;
 
@@ -81,8 +82,56 @@ public class CreditCardAnonymizer : BaseAnonymizer
     
     public override string Deanonymize(string anonymizedCC)
     {
-        // Implementation to reverse the anonymization process
-        // This would need to handle the preservation of first/last four
-        return base.Deanonymize(anonymizedCC);
+        // Remove any non-digit characters
+        string digitsOnly = Regex.Replace(anonymizedCC, @"\D", "");
+        
+        if (digitsOnly.Length < 13 || digitsOnly.Length > 19)
+            return base.Deanonymize(anonymizedCC); // Not a standard CC format
+        
+        string partToDecrypt = digitsOnly;
+        string result = "";
+        
+        if (_preserveFirstFour)
+        {
+            result += digitsOnly.Substring(0, 4);
+            partToDecrypt = digitsOnly.Substring(4);
+        }
+        
+        if (_preserveLastFour)
+        {
+            string lastFour = partToDecrypt.Substring(partToDecrypt.Length - 4);
+            partToDecrypt = partToDecrypt.Substring(0, partToDecrypt.Length - 4);
+            
+            // Decrypt middle part
+            if (!string.IsNullOrEmpty(partToDecrypt))
+            {
+                result += _cipher.Decrypt(partToDecrypt);
+            }
+            
+            result += lastFour;
+        }
+        else if (!string.IsNullOrEmpty(partToDecrypt))
+        {
+            // Decrypt everything except possibly first four
+            result += _cipher.Decrypt(partToDecrypt);
+        }
+        
+        // Reformat the result to match original format
+        if (anonymizedCC.Contains("-") || anonymizedCC.Contains(" "))
+        {
+            // Format with separators
+            string formatted = "";
+            for (int i = 0; i < result.Length; i++)
+            {
+                if (i > 0 && i % 4 == 0)
+                {
+                    formatted += anonymizedCC.Contains("-") ? "-" : " ";
+                }
+                formatted += result[i];
+            }
+            return formatted;
+        }
+        
+        return result;
     }
 }
