@@ -266,6 +266,51 @@ foreach (var address in addresses)
     Console.WriteLine();
 }
 
+Console.WriteLine("\nPreserving Specific Characters Example:");
+string emailLikeText = "contact-us@company.example";
+var charPreservingAnonymizer = new StringAnonymizer(cipher);
+
+// Preserve @ symbol and dots as you would in an email
+charPreservingAnonymizer.SetPreserveCharacters(new char[] { '@', '.', '-' });
+
+string anonymizedD = charPreservingAnonymizer.Anonymize(emailLikeText);
+string deanonymizedD = charPreservingAnonymizer.Deanonymize(anonymizedD);
+
+Console.WriteLine($"Original: {emailLikeText}");
+Console.WriteLine($"Anonymized: {anonymizedD}");
+Console.WriteLine($"Deanonymized: {deanonymizedD}");
+
+Console.WriteLine("\nPreserving Pattern Example:");
+string sensitiveMixedData = "Customer ID: ABC-12345, Balance: $5,000.00";
+var patternAnonymizer = new StringAnonymizer(cipher);
+
+// Only anonymize the ID and amount, preserve the labels and formatting
+// This regex captures the ID and amount as groups to be encrypted
+patternAnonymizer.SetPreservePattern(@"Customer ID: ([\w-]+), Balance: \$([\d,\.]+)");
+
+string patternAnonymized = patternAnonymizer.Anonymize(sensitiveMixedData);
+string patternDeanonymized = patternAnonymizer.Deanonymize(patternAnonymized);
+
+Console.WriteLine($"Original: {sensitiveMixedData}");
+Console.WriteLine($"Anonymized: {patternAnonymized}");
+Console.WriteLine($"Deanonymized: {patternDeanonymized}");
+
+
+Console.WriteLine("\nPreserving Specific Characters Example:");
+string emailLikeText2 = "contact-us@company.example";
+var charPreservingAnonymizer2 = new StringAnonymizer(cipher);
+
+// Preserve @ symbol and dots as you would in an email
+charPreservingAnonymizer2.SetPreserveCharacters(new char[] { '@', '.', '-' });
+
+string anonymizedF = charPreservingAnonymizer2.Anonymize(emailLikeText2);
+string deanonymizedF = charPreservingAnonymizer2.Deanonymize(anonymizedF);
+
+Console.WriteLine($"Original: {emailLikeText2}");
+Console.WriteLine($"Anonymized: {anonymizedF}");
+Console.WriteLine($"Deanonymized: {deanonymizedF}");
+
+
 // Wait for user input
 Console.WriteLine("\nPress any key to exit...");
 Console.ReadKey();
