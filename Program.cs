@@ -17,7 +17,7 @@ var cipher = new FF3Cipher(keyTweakPair.Key, keyTweakPair.Tweak);
 
 // Demo phone number anonymization
 Console.WriteLine("\nPhone Number Anonymization:");
-string phoneNumber = "+37369090275";
+string phoneNumber = "+1 415 5550198";
 var phoneAnonymizer = new PhoneNumberAnonymizer(cipher);
 phoneAnonymizer.SetPreserveCountryCode(true);
 phoneAnonymizer.SetPreserveAreaCode(true);
@@ -40,7 +40,7 @@ Console.WriteLine($"Anonymized: {encryptedEmail}");
 
 // Demo name anonymization
 Console.WriteLine("\nName Anonymization:");
-string name = "Name Surname";
+string name = "Global Database SRL";
 var nameAnonymizer = new NameAnonymizer(cipher);
 nameAnonymizer.SetPreserveCapitalization(true);
 string encryptedName = nameAnonymizer.Anonymize(name);
